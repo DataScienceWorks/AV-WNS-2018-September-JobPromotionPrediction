@@ -1,0 +1,18 @@
+From 64th (final submission) -> to 2nd place.  Cheburek. 
+2 LightGBM x 5 CV model on different features and parameters. 
+Weights, cutoff, tune and features were chosen by 5 folds oof optimization. 
+We generate more than 4k features: knn, interaction between categorical and continuous features, aggregates, autoencoder’s reconstruction errors and so on. 
+Then we choose best by individual Gini and LightGBM importances.  
+These features are sorted by importance and then added one by one into model and saved if fscore is higher after that.  
+A permutation importance for selected by this procedure features have been calculated and we drop features with the lowest ones. 
+The CV oof F1 score is 0.539.
+
+We build very simple autoencoder with 3 fc layers with shapes: 
+(feats, feats/2), (feats/2, feats/2), (feats/2, feats) and 
+train it 3-4 epochs on min-max scaled data with Adam optimizer and MSE criterion. 
+Reconstruction error are calculated as MSE and MAE between data and model’s output by rows. 
+These features also have high permutation score and they have been selected into final model. 
+
+About code: I think we share code for one model, but I should discuss it with my teammate.
+--------------------------------------------------------------------------------------------------------------------------------------------
+

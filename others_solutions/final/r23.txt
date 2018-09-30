@@ -1,0 +1,229 @@
+# loading the library files
+suppressPackageStartupMessages(library(mice))
+suppressPackageStartupMessages(library(VIM))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(missForest))
+library(dummies)
+library(RSNNS)
+
+# reading the files
+#setwd("D:/ML/R Materials/Projects/Project - 7")
+getwd()
+#load("D:/ML/R Materials/Projects/Project - 7/Promotion.RData")
+train_raw <- read.csv(file.choose())
+test_raw <- read.csv(file.choose())
+
+# creating mice plot for checking if there are missing 
+
+mp_raw_train <- aggr(train_raw, 
+                    col=c('grey','pink'),
+                    numbers=TRUE, 
+                    sortVars=TRUE,
+                    labels=names(train_raw), 
+                    cex.axis=.5,
+                    gap=3, 
+                    ylab=c("Missing data","Pattern"),
+                    cex.lab = .8,
+                    plot = TRUE,
+                    border = par("fg"),
+                    only.miss = TRUE,
+                    cex.numbers = .8)
+
+mp_raw_test <- aggr(test_raw, 
+                          col=c('grey','pink'),
+                          numbers=TRUE, 
+                          sortVars=TRUE,
+                          labels=names(test_raw), 
+                          cex.axis=.5,
+                          gap=3, 
+                          ylab=c("Missing data","Pattern"),
+                          cex.lab = .8,
+                          plot = TRUE,
+                          border = par("fg"),
+                          only.miss = TRUE,
+                          cex.numbers = .8)
+
+
+# cleansing the no_of_trainings
+train_raw$no_of_trainings <- as.factor(as.character(train_raw$no_of_trainings))
+test_raw$no_of_trainings <- as.factor(as.character(test_raw$no_of_trainings))
+
+row_train_traings <- c(which(train_raw$no_of_trainings == "4"),
+                       which(train_raw$no_of_trainings == "5"),
+                       which(train_raw$no_of_trainings == "6"),
+                       which(train_raw$no_of_trainings == "7"),
+                       which(train_raw$no_of_trainings == "8"),
+                       which(train_raw$no_of_trainings == "9"),
+                       which(train_raw$no_of_trainings == "10"))
+train_raw[row_train_traings,7] <- "4"
+
+row_test_traings <- c(which(test_raw$no_of_trainings == "4"),
+                       which(test_raw$no_of_trainings == "5"),
+                       which(test_raw$no_of_trainings == "6"),
+                       which(test_raw$no_of_trainings == "7"),
+                       which(test_raw$no_of_trainings == "8"),
+                       which(test_raw$no_of_trainings == "9"))
+test_raw[row_test_traings,7] <- "4"
+
+train_raw <- droplevels(train_raw)
+test_raw <- droplevels(test_raw)
+rm(row_test_traings)
+rm(row_train_traings)
+
+# cleansing previous_year_rating
+train_raw$previous_year_rating <- as.factor(as.character(train_raw$previous_year_rating))
+test_raw$previous_year_rating <- as.factor(as.character(test_raw$previous_year_rating))
+rating.Blank.train <- which(is.na(train_raw$previous_year_rating))
+rating.Blank.test <- which(is.na(test_raw$previous_year_rating))
+
+# cleansing KPIs_met..80.
+train_raw$KPIs_met..80. <- as.factor(as.character(train_raw$KPIs_met..80.))
+test_raw$KPIs_met..80. <- as.factor(as.character(test_raw$KPIs_met..80.))
+
+# cleansing KPIs_met..80.
+train_raw$awards_won. <- as.factor(as.character(train_raw$awards_won.))
+test_raw$awards_won. <- as.factor(as.character(test_raw$awards_won.))
+
+# cleansing is_promoted
+train_raw$is_promoted <- as.factor(as.character(train_raw$is_promoted))
+
+# cleansing region
+row_train_region <- c(which(train_raw$region == "region_2"),
+                      which(train_raw$region == "region_22"),
+                      which(train_raw$region == "region_7"))
+
+train_raw[-row_train_region,3] <- "region_1"
+train_raw <- droplevels(train_raw)
+rm(row_train_region)
+                     
+row_test_region <- c(which(test_raw$region == "region_2"),
+                     which(test_raw$region == "region_22"),
+                     which(test_raw$region == "region_7"))
+                     
+test_raw[-row_test_region,3] <- "region_1"
+test_raw <- droplevels(test_raw)
+rm(row_test_region)
+
+# imputing missing values
+
+set.seed(300)
+train_imp <- missForest(train_raw[-c(14)],
+                                 maxiter = 10,
+                                 ntree = 100,
+                                 variablewise = TRUE,
+                                 verbose = TRUE,
+                                 mtry = floor(sqrt(ncol(train_raw))),
+                                 replace = TRUE)
+
+imputed_train <- train_imp$ximp
+
+train_raw[rating.Blank.train,9] <- imputed_train[rating.Blank.train,9]
+rm(rating.Blank.train)
+rm(imputed_train)
+
+set.seed(300)
+test_imp <- missForest(test_raw,
+                        maxiter = 10,
+                        ntree = 100,
+                        variablewise = TRUE,
+                        verbose = TRUE,
+                        mtry = floor(sqrt(ncol(test_raw))),
+                        replace = TRUE)
+
+imputed_test <- test_imp$ximp
+
+test_raw[rating.Blank.test,9] <- imputed_test[rating.Blank.test,9]
+rm(rating.Blank.test)
+rm(imputed_test)
+
+# cleansing education as below secondary may not mention their education level
+row_train_education <- c(which(train_raw$education == "Bachelor's"),
+                      which(train_raw$education == "Below Secondary"),
+                      which(train_raw$education == "Master's & above"))
+
+train_raw[-row_train_education,4] <- "Below Secondary"
+train_raw <- droplevels(train_raw)
+rm(row_train_education)
+
+row_test_education <- c(which(test_raw$education == "Bachelor's"),
+                     which(test_raw$education == "Below Secondary"),
+                     which(test_raw$education == "Master's & above"))
+
+test_raw[-row_test_education,4] <- "Below Secondary"
+test_raw <- droplevels(test_raw)
+rm(row_test_education)
+
+# scaling the numeric columns
+train_raw[,c(8,10,13)] <-
+  scale(train_raw[,c(8,10,13)],center = TRUE, scale = TRUE)
+
+test_raw[,c(8,10,13)] <-
+  scale(test_raw[,c(8,10,13)],center = TRUE, scale = TRUE)
+
+# creating final DS
+final_train <- train_raw[,-1]
+final_test <- test_raw[,-1]
+
+# creating dummy variables for training dataset for the factor data type
+new_train_DS <- dummy.data.frame(final_train[,-13],
+                                 names = c("department",
+                                           "region",
+                                           "education",
+                                           "gender",
+                                           "recruitment_channel",
+                                           "no_of_trainings",
+                                           "previous_year_rating",
+                                           "KPIs_met..80.",
+                                           "awards_won."))
+
+new_train_DS <- cbind(new_train_DS,final_train[,13])
+colnames(new_train_DS)[colnames(new_train_DS)=="final_train[, 13]"] <-"is_promoted"
+
+# creating dummy variables for test dataset for the factor data type
+new_test_DS <- dummy.data.frame(final_test,
+                                 names = c("department",
+                                           "region",
+                                           "education",
+                                           "gender",
+                                           "recruitment_channel",
+                                           "no_of_trainings",
+                                           "previous_year_rating",
+                                           "KPIs_met..80.",
+                                           "awards_won."))
+
+
+### begin model code
+# mlp model
+set.seed(123)
+
+# generating the multi payer perceptron
+model_RSNNS <- mlp(new_train_DS[,-38],
+                   as.numeric(as.character(new_train_DS[,38])),
+                   size = 90,
+                   initFunc = "Randomize_Weights", 
+                   initFuncParams = c(-0.3, 0.3),
+                   #learnFunc = "BackpropBatch",
+                   learnFuncParams = c(0.001),
+                   maxit = 2700,
+                   updateFunc = "Topological_Order",
+                   inputsTest = NULL,
+                   targetsTest = NULL,
+                   linOut = FALSE)
+
+# generating error plot
+plotIterativeError(model_RSNNS)
+
+# generating prediction
+pred_RSNNS <- predict(model_RSNNS,new_test_DS)
+
+mlp_sub <- data.frame(test_raw$employee_id)
+mlp_sub$is_promoted <- ifelse(pred_RSNNS[,1] < .26,0,1)
+colnames(mlp_sub)[colnames(mlp_sub)=="test_raw.employee_id"] <-"employee_id"
+
+write.csv(mlp_sub, 
+          file = gsub(":","_",paste("Submission_",Sys.time(),".csv",
+                                    sep = "")),
+          row.names = FALSE)
+
+save.image("D:/ML/R Materials/Projects/Project - 7/Promotion.RData")
+
