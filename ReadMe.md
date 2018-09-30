@@ -86,3 +86,119 @@ Test data is further randomly divided into Public (40%) and Private (60%) data.
 1. Setting final submission is mandatory. Without a final submission, your entry will not be considered.
 2. Code file is mandatory while sending final submission. For GUI based tools, please upload a zip file of snapshots of steps taken by you, else upload code file.
 3. The code file uploaded should be pertaining to your final submission.
+
+
+
+### Lessons Learnt
+
+* Don't do Feature Selection early on. Begin with including all features and set that as your baseline.
+
+* Typical Steps To Follow (Skip any  at your own risk):
+
+  * Data Cleaning
+
+  * Feature Pre-processing
+
+    * Make all features numeric (at the very least)
+
+      ```python
+      def numerify(ser):
+          return LabelEncoder().fit_transform(ser)
+      
+      df2 = df.copy()
+      
+      df2['department'] = numerify(df2['department'])
+      df2['region'] = numerify(df2['region'])
+      
+      ##Split train data-set
+      from sklearn.model_selection import train_test_split
+      x_train, x_test, y_train, y_test = train_test_split(df2[df2.columns.difference(['is_promoted'])], 
+                                                          df2['is_promoted'], 
+                                                          train_size = 0.75, 
+                                                          random_state = 42)
+      
+      ## Find Feature Importances
+      from sklearn.ensemble import RandomForestClassifier
+      rf = RandomForestClassifier(n_estimators=100, n_jobs=-1, random_state=42)
+      rf.fit(x_train, y_train)
+      
+      names = df2.columns.values #select_columns #x_train.columns
+      scores = map(lambda x: round(x, 4), rf.feature_importances_)
+      score_map = zip(scores, names)
+      print("Features sorted by their score:")
+      # for a,b in sorted(score_map, reverse=True):
+      for a,b in sorted(score_map, reverse=True):
+          print(a,b)
+      ```
+
+  * Feature Selection and Construction
+
+    * Rank Features by Importance with `df.corr()`
+
+    * Select N features:
+
+      ```python
+      feat_sel = SelectKBest(mutual_info_classif, k=200)
+      
+      feat_sel = SelectKBest(mutual_info_classif, k=200)  
+      clf = linear_model.LogisticRegression()
+      
+      pipe = Pipeline([('vectorizer', DictVectorizer()),
+                       ('scaler', StandardScaler(with_mean=False)),
+                       ('mutual_info', feat_sel),
+                       ('logistregress', clf)])
+      ```
+
+  * Model Selection
+
+  * Parameter Optimization
+
+  * Model Validation
+
+* Issue getting the  below class to work:
+
+  ```python
+  class MultiColumnLabelEncoder:
+      def __init__(self,columns = None):
+          self.columns = columns # array of column names to encode
+          self.le = {}
+  
+      def get_encoder(self,name):
+          encoder = self.le.get(name, self.set_encoder_for(name))        
+          return encoder
+      
+      def set_encoder_for(self,name):
+          self.le.update({name:LabelEncoder()})
+          return self.le.get(name)
+      
+      def fit(self,X,y=None):
+          output = X.copy()
+          if self.columns is not None:
+              for colname in self.columns:
+                  self.get_encoder(colname).fit(output[colname])
+          else:
+              for colname,col in output.iteritems():
+                  self.get_encoder(colname).fit(col)
+          return self # not relevant here
+  
+      def transform(self,X):
+          '''
+          Transforms columns of X specified in self.columns using LabelEncoder(). 
+          If no columns specified, transforms all columns in X.
+          '''
+          output = X.copy()
+          if self.columns is not None:
+              for col in self.columns:
+                  output[col] = self.get_encoder(col).transform(output[col])
+          else:
+              for colname,col in output.iteritems():
+                  output[colname] = self.get_encoder(colname).transform(col)
+          return output
+  
+      def fit_transform(self,X,y=None):
+          return self.fit(X,y).transform(X)
+  ```
+
+* `LabelEncoder` (which is actually meant for the target variable, not for encoding features). See [source](https://jorisvandenbossche.github.io/blog/2017/11/20/categorical-encoder/). The `OneHotEncoder` and `OrdinalEncoder` only provide two ways to encode, but there are many more possible ways to convert your categorical variables into numeric features suited to feed 
+  into models. The [Category Encoders](http://contrib.scikit-learn.org/categorical-encoding/) is a scikit-learn-contrib package that provides a whole suite of 
+  scikit-learn compatible transformers for different types of categorical encodings.
