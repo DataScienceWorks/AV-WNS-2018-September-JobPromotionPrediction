@@ -202,3 +202,6 @@ Test data is further randomly divided into Public (40%) and Private (60%) data.
 * `LabelEncoder` (which is actually meant for the target variable, not for encoding features). See [source](https://jorisvandenbossche.github.io/blog/2017/11/20/categorical-encoder/). The `OneHotEncoder` and `OrdinalEncoder` only provide two ways to encode, but there are many more possible ways to convert your categorical variables into numeric features suited to feed 
   into models. The [Category Encoders](http://contrib.scikit-learn.org/categorical-encoding/) is a scikit-learn-contrib package that provides a whole suite of 
   scikit-learn compatible transformers for different types of categorical encodings.
+
+* Replaced custom defined `MultiColumnLabelEncoder` class with scikit-learn `OrdinalEncoder`
+* Replaced custom defined `ColumnSelector, RatingsImputer, EducationCleanser` with scikit-learn `make_column_transformer()`
