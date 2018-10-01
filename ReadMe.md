@@ -199,9 +199,31 @@ Test data is further randomly divided into Public (40%) and Private (60%) data.
           return self.fit(X,y).transform(X)
   ```
 
-* `LabelEncoder` (which is actually meant for the target variable, not for encoding features). See [source](https://jorisvandenbossche.github.io/blog/2017/11/20/categorical-encoder/). The `OneHotEncoder` and `OrdinalEncoder` only provide two ways to encode, but there are many more possible ways to convert your categorical variables into numeric features suited to feed 
-  into models. The [Category Encoders](http://contrib.scikit-learn.org/categorical-encoding/) is a scikit-learn-contrib package that provides a whole suite of 
-  scikit-learn compatible transformers for different types of categorical encodings.
+* `LabelEncoder` (which is actually meant for the target variable, not for encoding features). See [blog post](https://jorisvandenbossche.github.io/blog/2017/11/20/categorical-encoder/). 
+  The `OneHotEncoder` and `OrdinalEncoder` only provide two ways to encode, but there are many more possible ways to convert your categorical variables into numeric features suited to feed 
+  into models. The [Category Encoders](http://contrib.scikit-learn.org/categorical-encoding/) is a scikit-learn-contrib package that provides a whole suite of scikit-learn compatible transformers for different types of categorical encodings.
+  Also see [blog post titled - Guide to Encoding Categorical Values in Python](http://pbpython.com/categorical-encoding.html).
 
 * Replaced custom defined `MultiColumnLabelEncoder` class with scikit-learn `OrdinalEncoder`
-* Replaced custom defined `ColumnSelector, RatingsImputer, EducationCleanser` with scikit-learn `make_column_transformer()`
+
+* Replaced cutom defined `RatingsImputer, EducationCleanser` with `sklearn.impute.SimpleImputer`. For more see [docs](http://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html).
+
+* Replaced custom defined `ColumnSelector` with scikit-learn `make_column_transformer()` . For more refer [blog](https://jorisvandenbossche.github.io/blog/2018/05/28/scikit-learn-columntransformer/)
+
+  ```python
+  select_numeric_cols = ['avg_training_score', 'has_won_awards', 'is_kpi_met', 'previous_year_rating']
+  select_categorical_cols = ['department', 'region','education', 'gender', 'recruitment_channel'] # select_categorical_cols = []
+  select_columns = select_numeric_cols + select_categorical_cols
+  
+  # Ref.: https://jorisvandenbossche.github.io/blog/2018/05/28/scikit-learn-columntransformer/
+  preprocess = make_column_transformer(
+      (['previous_year_rating'],make_pipeline(SimpleImputer(strategy='constant',fill_value=3),RobustScaler())),
+      (list(set(select_numeric_cols) - set(['previous_year_rating'])), RobustScaler()),
+      (['education'],make_pipeline(SimpleImputer(strategy='constant',fill_value="Bachelor's"),OrdinalEncoder())),
+      (list(set(select_categorical_cols) - set(['education'])), OrdinalEncoder()),    
+  )
+  
+  train_vec = preprocess.fit_transform(df[select_columns])
+  print(train_vec.shape)
+  print(train_vec[:3])
+  ```
